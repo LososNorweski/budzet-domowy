@@ -735,7 +735,7 @@ export default function App() {
         error={authError}
         busy={authBusy}
         onSubmit={handleAuth}
-        onChange={setAuthForm}
+        onChange={(patch) => setAuthForm((f) => ({ ...f, ...patch }))}
         onMode={() =>
           setAuthMode((m) => (m === "login" ? "register" : "login"))
         }
