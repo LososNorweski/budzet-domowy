@@ -52,14 +52,76 @@ function daysInMonth(month) {
   return DAYS_IN_MONTH[m - 1];
 }
 
+const TOKEN_KEY = "bd_token";
+const USERNAME_KEY = "bd_username";
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
 async function api(path, options) {
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
     ...options,
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USERNAME_KEY);
+    window.dispatchEvent(new CustomEvent("bd:logout"));
+  }
   if (!res.ok) throw new Error(data.error || "Błąd serwera");
   return data;
+}
+
+function AuthScreen({ mode, username, password, error, busy, onSubmit, onMode, onChange }) {
+  return (
+    <div className="login-screen">
+      <form className="login-card" onSubmit={onSubmit}>
+        <div className="login-brand">
+          <span className="brand-icon">🏦</span>
+          <h1>Budżet domowy</h1>
+        </div>
+        <input
+          className="input login-input"
+          placeholder="Nazwa użytkownika"
+          value={username}
+          autoFocus
+          onChange={(e) => onChange({ username: e.target.value })}
+        />
+        <input
+          className="input login-input"
+          type="password"
+          placeholder="Hasło (min. 4 znaki)"
+          value={password}
+          onChange={(e) => onChange({ password: e.target.value })}
+        />
+        {error && <p className="login-error">{error}</p>}
+        <button className="btn btn-primary login-btn" disabled={busy}>
+          {busy
+            ? "Sprawdzam…"
+            : mode === "login"
+              ? "Zaloguj"
+              : "Załóż konto"}
+        </button>
+        <button
+          type="button"
+          className="btn login-btn"
+          onClick={onMode}
+        >
+          {mode === "login"
+            ? "Nie masz konta? Zarejestruj się"
+            : "Masz konto? Zaloguj się"}
+        </button>
+        <p className="login-note">
+          Każda osoba ma własne dane — idealne dla domowników 🏠
+        </p>
+      </form>
+    </div>
+  );
 }
 
 function IncomeRow({ income, onUpdate, onDelete }) {
@@ -576,18 +638,63 @@ export default function App() {
   const [currentMonth, setCurrentMonth] = useState("");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [authed, setAuthed] = useState(() => !!getToken());
+  const [authMode, setAuthMode] = useState("login");
+  const [authForm, setAuthForm] = useState({ username: "", password: "" });
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [username, setUsername] = useState(
+    () => localStorage.getItem(USERNAME_KEY) || ""
+  );
+
+  useEffect(() => {
+    const logout = () => setAuthed(false);
+    window.addEventListener("bd:logout", logout);
+    return () => window.removeEventListener("bd:logout", logout);
+  }, []);
 
   const now = new Date();
   const cm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   if (!currentMonth) setCurrentMonth(cm);
 
   useEffect(() => {
-    if (!currentMonth) return;
+    if (!currentMonth || !authed) return;
     setError("");
     api(`/api/months/${currentMonth}`)
       .then(setData)
       .catch((e) => setError(e.message));
-  }, [currentMonth]);
+  }, [currentMonth, authed]);
+
+  async function handleAuth(e) {
+    e.preventDefault();
+    const { username: u, password: p } = authForm;
+    if (!u || !p) return;
+    setAuthBusy(true);
+    setAuthError("");
+    try {
+      const { token, username: uname } = await api(
+        authMode === "login" ? "/api/login" : "/api/register",
+        {
+          method: "POST",
+          body: JSON.stringify({ username: u, password: p }),
+        }
+      );
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(USERNAME_KEY, uname);
+      setUsername(uname);
+      setAuthed(true);
+    } catch (err) {
+      setAuthError(err.message);
+    }
+    setAuthBusy(false);
+  }
+
+  function logout() {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USERNAME_KEY);
+    setData(null);
+    setAuthed(false);
+  }
 
   async function refresh() {
     setError("");
@@ -619,12 +726,35 @@ export default function App() {
         .filter((c) => c.amount > 0 || c.items.length > 0)
     : [];
 
+  if (!authed) {
+    return (
+      <AuthScreen
+        mode={authMode}
+        username={authForm.username}
+        password={authForm.password}
+        error={authError}
+        busy={authBusy}
+        onSubmit={handleAuth}
+        onChange={setAuthForm}
+        onMode={() =>
+          setAuthMode((m) => (m === "login" ? "register" : "login"))
+        }
+      />
+    );
+  }
+
   return (
     <div className="app">
       <header>
         <div className="brand">
           <span className="brand-icon">🏦</span>
           <h1>Budżet domowy</h1>
+        </div>
+        <div className="header-right">
+          <span className="user-chip">👤 {username}</span>
+          <button className="btn btn-danger" onClick={logout}>
+            Wyloguj
+          </button>
         </div>
         <div className="month-nav">
           <button

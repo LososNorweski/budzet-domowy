@@ -60,6 +60,20 @@ h1 {
   gap: 8px;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-chip {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 14px;
+}
+
 .month-label {
   font-size: 18px;
   font-weight: 600;
@@ -329,6 +343,64 @@ h1 {
 .icon-select {
   flex: none;
   width: 64px;
+  text-align: center;
+}
+
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.login-brand h1 {
+  font-size: 22px;
+}
+
+.login-input {
+  padding: 12px;
+  font-size: 16px;
+  text-align: center;
+}
+
+.login-btn {
+  padding: 12px;
+  font-size: 16px;
+}
+
+.login-error {
+  margin: 0;
+  color: var(--negative);
+  font-size: 14px;
+  text-align: center;
+}
+
+.login-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
   text-align: center;
 }
 
